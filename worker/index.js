@@ -16,12 +16,12 @@ export default {
       });
     }
 
-    // Parse target from path: /http/IP/PORT/rest/of/path
-    const match = url.pathname.match(/^\/http\/([^/:]+)\/(\d+)(\/.*)?$/);
+    // Parse target from path: /http/IP/PORT/path or /http/IP:PORT/path
+    const match = url.pathname.match(/^\/http\/([^/:]+)[/:](\d+)(\/.*)?$/);
     if (!match) {
       return new Response(
         JSON.stringify({ error: "Usage: /http/HOST/PORT/path" }),
-        { status: 400, headers: { "content-type": "application/json" } }
+        { status: 400, headers: { "content-type": "application/json", ...corsHeaders() } }
       );
     }
 
