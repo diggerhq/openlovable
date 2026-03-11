@@ -230,7 +230,8 @@ function patchSandboxUrls(sandbox: Sandbox) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const s = sub as any;
     if (s && typeof s.apiUrl === "string" && s.apiUrl.startsWith("http://")) {
-      const raw = s.apiUrl.replace("http://", "");
+      // Convert http://IP:PORT -> CF_PROXY/http/IP/PORT (no colon — breaks WebSocket URLs)
+      const raw = s.apiUrl.replace("http://", "").replace(":", "/");
       s.apiUrl = `${CF_PROXY}/http/${raw}`;
     }
   }
