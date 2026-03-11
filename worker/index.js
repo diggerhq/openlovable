@@ -1,3 +1,5 @@
+import { connect } from "cloudflare:sockets";
+
 // Cloudflare Worker: SSL-terminating proxy for OpenComputer SDK.
 // Routes: https://WORKER/http/IP/PORT/path -> http://IP:PORT/path
 // HTTP: uses nip.io hostname with fetch()
