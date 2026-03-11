@@ -219,20 +219,19 @@ createRoot(document.getElementById("root")!).render(
   await new Promise((r) => setTimeout(r, 2000));
 }
 
-// The SDK uses a direct connectURL (raw IP:port) for data operations.
-// Browsers on HTTPS pages block these mixed-content HTTP requests.
-// Re-point all sub-clients to the public API URL instead.
-function fixSandboxUrls(sandbox: Sandbox, apiUrl: string, apiKey: string) {
-  const base = apiUrl.replace(/\/+$/, "").endsWith("/api")
-    ? apiUrl.replace(/\/+$/, "")
-    : `${apiUrl.replace(/\/+$/, "")}/api`;
+// Cloudflare Worker proxy URL — rewrite raw HTTP connect URLs to go
+// through this SSL-terminating proxy so both fetch and WebSocket work.
+const CF_PROXY = "https://opencomputer-proxy.mo-b8f.workers.dev";
+
+// Rewrite SDK sub-client URLs from http://IP:PORT to
+// https://WORKER/http/IP:PORT so all traffic is SSL-terminated.
+function patchSandboxUrls(sandbox: Sandbox) {
   for (const sub of [sandbox.files, sandbox.exec, sandbox.agent, sandbox.pty]) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const s = sub as any;
-    if (s) {
-      s.apiUrl = base;
-      s.apiKey = apiKey;
-      s.token = "";
+    if (s && typeof s.apiUrl === "string" && s.apiUrl.startsWith("http://")) {
+      const raw = s.apiUrl.replace("http://", "");
+      s.apiUrl = `${CF_PROXY}/http/${raw}`;
     }
   }
 }
@@ -555,7 +554,7 @@ export function useSandboxAgent(settings: Settings) {
             cpuCount: 2,
           });
           sandboxRef.current = sandbox;
-          fixSandboxUrls(sandbox, settings.apiUrl, settings.apiKey);
+          patchSandboxUrls(sandbox);
           addLog("info", `Sandbox created: ${sandbox.sandboxId}`);
 
           // Create preview URL
