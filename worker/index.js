@@ -31,19 +31,29 @@ export default {
     const hostname = `${ip}.nip.io`;
     const targetUrl = `http://${hostname}:${port}${targetPath}`;
 
+    // Build clean headers for proxying
+    function proxyHeaders() {
+      const h = new Headers(request.headers);
+      h.set("host", `${hostname}:${port}`);
+      // Remove Cloudflare-specific headers
+      for (const key of [...h.keys()]) {
+        if (key.startsWith("cf-") || key.startsWith("x-forwarded") || key === "x-real-ip") {
+          h.delete(key);
+        }
+      }
+      return h;
+    }
+
     // WebSocket upgrade
     if (request.headers.get("upgrade") === "websocket") {
-      const wsUrl = targetUrl.replace("http://", "ws://");
-      const resp = await fetch(wsUrl, {
-        headers: request.headers,
+      const resp = await fetch(targetUrl, {
+        headers: proxyHeaders(),
       });
       return resp;
     }
 
     // Regular HTTP proxy
-    const headers = new Headers(request.headers);
-    headers.delete("host");
-    headers.set("host", `${hostname}:${port}`);
+    const headers = proxyHeaders();
 
     const resp = await fetch(targetUrl, {
       method: request.method,
