@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "opencomputer": {
+      "source": "diggerhq/opencomputer",
+      "sourceType": "github",
+      "computedHash": "c3be5b8bce20aa068308ddcbd23ee68e9c8d56e7eb304d2417f1a92d6c8da1f4"
+    }
+  }
+}
