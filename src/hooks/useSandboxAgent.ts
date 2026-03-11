@@ -690,8 +690,23 @@ export function useSandboxAgent(settings: Settings) {
       addLog("user", prompt);
 
       try {
-        // Close old session FIRST (before setting up turnPromise) to prevent
-        // the old session's onExit from stealing the new turn resolver
+        // If the agent process is still alive, send the prompt directly via stdin
+        // instead of killing the session and trying to resume
+        if (sessionRef.current && sessionAliveRef.current) {
+          if (DEBUG) console.log("[DEBUG] sendFollowUp: session is alive, using sendPrompt");
+          addLog("info", "Continuing conversation...");
+          const turnPromise = waitForTurn();
+          sessionRef.current.sendPrompt(prompt);
+
+          if (DEBUG) console.log("[DEBUG] sendFollowUp: waiting for turnPromise...");
+          await turnPromise;
+          if (DEBUG) console.log("[DEBUG] sendFollowUp: turnPromise resolved, scanning files...");
+          await scanFiles(sandbox);
+          if (DEBUG) console.log("[DEBUG] sendFollowUp: scanFiles done, should be 'ready'");
+          return;
+        }
+
+        // Agent process is dead — close old WebSocket and start a new session with resume
         if (sessionRef.current) {
           sessionRef.current.close();
           sessionRef.current = null;
