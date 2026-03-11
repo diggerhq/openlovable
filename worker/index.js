@@ -31,29 +31,34 @@ export default {
     const hostname = `${ip}.nip.io`;
     const targetUrl = `http://${hostname}:${port}${targetPath}`;
 
-    // Build clean headers for proxying
-    function proxyHeaders() {
-      const h = new Headers(request.headers);
-      h.set("host", `${hostname}:${port}`);
-      // Remove Cloudflare-specific headers
-      for (const key of [...h.keys()]) {
-        if (key.startsWith("cf-") || key.startsWith("x-forwarded") || key === "x-real-ip") {
-          h.delete(key);
-        }
-      }
-      return h;
-    }
-
-    // WebSocket upgrade
+    // WebSocket upgrade — use Cloudflare's native WebSocket proxy pattern
     if (request.headers.get("upgrade") === "websocket") {
+      // Cloudflare requires fetching with Upgrade header to proxy WebSockets
       const resp = await fetch(targetUrl, {
-        headers: proxyHeaders(),
+        method: "GET",
+        headers: {
+          "host": `${hostname}:${port}`,
+          "upgrade": "websocket",
+          "connection": "Upgrade",
+          "sec-websocket-version": request.headers.get("sec-websocket-version") || "13",
+          "sec-websocket-key": request.headers.get("sec-websocket-key") || "",
+          "sec-websocket-protocol": request.headers.get("sec-websocket-protocol") || "",
+          // Forward auth token if present
+          "authorization": request.headers.get("authorization") || "",
+        },
       });
       return resp;
     }
 
     // Regular HTTP proxy
-    const headers = proxyHeaders();
+    const headers = new Headers(request.headers);
+    headers.set("host", `${hostname}:${port}`);
+    // Remove Cloudflare-specific headers
+    for (const key of [...headers.keys()]) {
+      if (key.startsWith("cf-") || key.startsWith("x-forwarded") || key === "x-real-ip") {
+        headers.delete(key);
+      }
+    }
 
     const resp = await fetch(targetUrl, {
       method: request.method,
