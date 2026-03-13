@@ -219,24 +219,6 @@ createRoot(document.getElementById("root")!).render(
   await new Promise((r) => setTimeout(r, 2000));
 }
 
-// Cloudflare Worker proxy URL — rewrite raw HTTP connect URLs to go
-// through this SSL-terminating proxy so both fetch and WebSocket work.
-const CF_PROXY = "https://opencomputer-proxy.mo-b8f.workers.dev";
-
-// Rewrite SDK sub-client URLs from http://IP:PORT to
-// https://WORKER/http/IP:PORT so all traffic is SSL-terminated.
-function patchSandboxUrls(sandbox: Sandbox) {
-  for (const sub of [sandbox.files, sandbox.exec, sandbox.agent, sandbox.pty]) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const s = sub as any;
-    if (s && typeof s.apiUrl === "string" && s.apiUrl.startsWith("http://")) {
-      // Convert http://IP:PORT -> CF_PROXY/http/IP/PORT (no colon — breaks WebSocket URLs)
-      const raw = s.apiUrl.replace("http://", "").replace(":", "/");
-      s.apiUrl = `${CF_PROXY}/http/${raw}`;
-    }
-  }
-}
-
 let logIdCounter = Date.now();
 
 function makeLogEntry(
@@ -555,7 +537,6 @@ export function useSandboxAgent(settings: Settings) {
             cpuCount: 2,
           });
           sandboxRef.current = sandbox;
-          patchSandboxUrls(sandbox);
           addLog("info", `Sandbox created: ${sandbox.sandboxId}`);
 
           // Create preview URL
